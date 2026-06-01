@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "plugins": [
+    {
+      "id": "hydra-update-examiner",
+      "name": "Hydra Update Examiner",
+      "version": "1.1.0",
+      "official": false,
+      "author": "goober + Codex",
+      "description": "Shows NixOS/Nixpkgs channel readiness from Hydra gate status.",
+      "repository": "https://github.com/Go08er/goober-noctalia-plugins",
+      "minNoctaliaVersion": "4.6.6",
+      "license": "MIT",
+      "tags": [
+        "Bar",
+        "Indicator",
+        "System",
+        "Utility"
+      ]
+    }
+  ]
+}

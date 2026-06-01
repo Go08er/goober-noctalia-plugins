@@ -1,0 +1,86 @@
+{
+  "channels": {
+    "custom": "Custom channel",
+    "nixpkgsUnstable": "nixpkgs unstable",
+    "nixosStable": "NixOS stable",
+    "nixosStableSmall": "NixOS stable small",
+    "nixosUnstable": "NixOS unstable",
+    "nixosUnstableSmall": "NixOS unstable small"
+  },
+  "menu": {
+    "documentation": "Documentation",
+    "openHydra": "Open Hydra",
+    "refresh": "Refresh",
+    "settings": "Plugin settings"
+  },
+  "percent": {
+    "alwaysShow": "Always show percent",
+    "iconOnly": "Icon only",
+    "onHover": "On hover"
+  },
+  "settings": {
+    "channel": {
+      "description": "Stable aliases resolve to the current supported release.",
+      "label": "Channel"
+    },
+    "close": {
+      "description": "Used at or above the close threshold."
+    },
+    "launched": {
+      "description": "Used when the latest visible eval is already published."
+    },
+    "closeThreshold": {
+      "description": "Percent where the widget switches to the close state.",
+      "label": "Close threshold"
+    },
+    "colors": {
+      "description": "Noctalia theme color slots for each state.",
+      "label": "State colors"
+    },
+    "customChannel": {
+      "description": "Exact channel name.",
+      "label": "Custom channel"
+    },
+    "documentation": "Documentation",
+    "icons": {
+      "browse": "Browse",
+      "close": "Close icon",
+      "description": "Icon shown for each state.",
+      "label": "State icons",
+      "launched": "Launched icon",
+      "running": "Running icon",
+      "stalled": "Stalled icon"
+    },
+    "percent": {
+      "description": "When to show percent text.",
+      "label": "Percent text"
+    },
+    "refresh": {
+      "description": "How often the bar widget polls Hydra. Minimum is 1 minute.",
+      "label": "Refresh minutes"
+    },
+    "source": {
+      "description": "Choose the channel to track.",
+      "label": "Hydra source"
+    },
+    "stalled": {
+      "description": "Used when the channel gate is failed, dependency-failed, aborted, or timed out."
+    },
+    "states": {
+      "close": "Close",
+      "launched": "Launched",
+      "running": "Running",
+      "stalled": "Stalled"
+    },
+    "title": "Hydra Update Examiner",
+    "titleDescription": "Open the documentation for channel support, scoring notes, and limitations."
+  },
+  "widget": {
+    "commandFailed": "Hydra status command failed.",
+    "commandFailedWithError": "Hydra status command failed:\n{error}",
+    "invalidJson": "Hydra status command returned invalid JSON.",
+    "invalidJsonWithOutput": "Hydra status command returned invalid JSON:\n{output}",
+    "notFetched": "Hydra status has not been fetched yet.",
+    "unavailable": "Hydra status unavailable."
+  }
+}
