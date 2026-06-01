@@ -3,12 +3,12 @@ set -u
 
 base_url="https://hydra.nixos.org"
 channel="nixos-unstable"
-running_color="tertiary"
+running_color="secondary"
 stalled_color="error"
-close_color="primary"
+close_color="tertiary"
 launched_color="primary"
-running_icon="server"
-stalled_icon="circle-alert"
+running_icon="server-bolt"
+stalled_icon="server-off"
 close_icon="server-spark"
 launched_icon="rocket"
 close_threshold="90"
@@ -52,7 +52,7 @@ json_escape() {
 }
 
 emit_without_jq() {
-  printf '{"text":"ERR","icon":"circle-alert","tooltip":"Missing required command: jq","iconColor":"error","textColor":"error","url":"","channel":"%s"}\n' "${channel//\"/}"
+  printf '{"text":"ERR","icon":"server-off","tooltip":"Missing required command: jq","iconColor":"error","textColor":"error","url":"","channel":"%s"}\n' "${channel//\"/}"
   exit 0
 }
 
@@ -322,7 +322,7 @@ stalled_color="$(safe_color "$stalled_color" "error")"
 close_color="$(safe_color "$close_color" "primary")"
 launched_color="$(safe_color "$launched_color" "primary")"
 running_icon="$(safe_icon "$running_icon" "server")"
-stalled_icon="$(safe_icon "$stalled_icon" "circle-alert")"
+stalled_icon="$(safe_icon "$stalled_icon" "server-off")"
 close_icon="$(safe_icon "$close_icon" "server-spark")"
 launched_icon="$(safe_icon "$launched_icon" "rocket")"
 if ! command -v jq >/dev/null 2>&1; then

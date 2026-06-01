@@ -40,6 +40,7 @@ plugin interface.
 registry.json
 hydra-update-examiner/
   manifest.json
+  LICENSE
   preview.png
   README.md
   Main.qml
@@ -59,5 +60,6 @@ users receive the updated package from this source.
 
 ## License
 
-Plugins in this repository declare their own licenses. `Hydra Update Examiner`
+This repository is MIT licensed. Plugins may also include a plugin-local
+license file when useful for plugin-manager packaging; `Hydra Update Examiner`
 is MIT licensed.

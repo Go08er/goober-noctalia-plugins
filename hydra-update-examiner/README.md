@@ -94,7 +94,7 @@ Remove the plugin through Noctalia's plugin manager.
 
 ## Settings
 
-- Channel preset: `nixos-unstable`, `nixos-unstable-small`, current stable NixOS, current stable small, `nixpkgs-unstable`, or a custom exact channel.
+- Channel preset: `nixos-unstable`, `nixos-unstable-small`, current stable NixOS, current stable small, `nixpkgs-unstable`, or an exact supported channel.
 - Refresh interval in minutes.
 - Noctalia color keys for running, stalled, and close states.
 - Icon names for running, stalled, close, and launched states.
@@ -109,7 +109,7 @@ https://channels.nixos.org/<channel>/git-revision
 
 Unsupported or misspelled channels return a visible error state instead of silently scraping the wrong Hydra jobset.
 
-Supported custom channel names:
+Supported exact channel names:
 
 | Channel | Hydra jobset | Gate job |
 | --- | --- | --- |
@@ -121,7 +121,11 @@ Supported custom channel names:
 | `nixos-YY.MM-small` | `nixos:release-YY.MM-small` | `tested` |
 | `nixpkgs-unstable` | `nixpkgs:unstable` | `unstable` |
 
-Other public channel families, such as historical archives or Darwin-only `nixpkgs-YY.MM-darwin` channels, are intentionally rejected until their Hydra publication gate is mapped explicitly.
+The exact-channel field is not a generic third-party Hydra URL. It accepts only
+public NixOS/Nixpkgs channels whose Hydra project, jobset, and publication gate
+are mapped by the script. Other public channel families, such as historical
+archives or Darwin-only `nixpkgs-YY.MM-darwin` channels, are intentionally
+rejected until their Hydra publication gate is mapped explicitly.
 
 ## NixOS/Home-Managed Install Pattern
 
@@ -135,7 +139,7 @@ Example Home Manager pattern:
 
 ```nix
 home.file.".config/noctalia/plugins/hydra-update-examiner" = {
-  source = ./path/to/HydraUpdateExaminer;
+  source = ./path/to/hydra-update-examiner;
   recursive = true;
 };
 ```

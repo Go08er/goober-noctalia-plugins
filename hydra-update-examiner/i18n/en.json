@@ -1,6 +1,6 @@
 {
   "channels": {
-    "custom": "Custom channel",
+    "custom": "Exact channel",
     "nixpkgsUnstable": "nixpkgs unstable",
     "nixosStable": "NixOS stable",
     "nixosStableSmall": "NixOS stable small",
@@ -38,8 +38,8 @@
       "label": "State colors"
     },
     "customChannel": {
-      "description": "Exact channel name.",
-      "label": "Custom channel"
+      "description": "Exact supported channel name, such as nixos-26.05.",
+      "label": "Exact channel"
     },
     "documentation": "Documentation",
     "icons": {
