@@ -66,40 +66,23 @@ It performs read-only `GET` requests to:
 
 Requests happen when Noctalia loads the widget, on the configured refresh interval, and when the widget is manually refreshed. The default refresh interval is 60 minutes.
 
-The plugin itself only persists settings through Noctalia. The standalone `install.sh` and `uninstall.sh` scripts modify the current user's Noctalia config files and create backups before doing so.
+The plugin itself only persists settings through Noctalia.
 
 ## Install
 
-This repository is packaged for standalone/custom-repo installation. If the plugin is submitted to the official `noctalia-dev/noctalia-plugins` registry, the registry package should rely on Noctalia's plugin manager and may omit the standalone `install.sh` and `uninstall.sh` helper scripts.
+Install this plugin through Noctalia's plugin manager after adding the custom
+source repository:
 
-Do not run the installer with `sudo`; it installs into the current user's Noctalia config.
-
-Quick start from a checkout:
-
-```bash
-git clone https://github.com/Go08er/hydra-update-examiner.git
-cd hydra-update-examiner
-./install.sh
+```json
+{
+  "enabled": true,
+  "name": "Goober Noctalia Plugins",
+  "url": "https://github.com/Go08er/goober-noctalia-plugins"
+}
 ```
 
-The installer:
-
-- copies the plugin to `~/.config/noctalia/plugins/hydra-update-examiner`, backing up an existing live plugin directory first under `~/.config/noctalia/backups/hydra-update-examiner`
-- enables it in `~/.config/noctalia/plugins.json`
-- inserts `plugin:hydra-update-examiner` at the end of the right bar section by default
-- backs up touched Noctalia JSON files before writing them
-
-JSON backups are named `*.bak-hydra-update-examiner-*`. Plugin-directory backups are stored under `~/.config/noctalia/backups/hydra-update-examiner/`. Restore by copying the desired backup back to the original path.
-
-Placement is configurable:
-
-```bash
-./install.sh --bar-section left --bar-after ControlCenter
-./install.sh --bar-section center --bar-position start
-./install.sh --no-bar-widget
-```
-
-Restart Noctalia after installing. In Niri, the practical reload is to terminate and relaunch `noctalia-shell`.
+Restart Noctalia after installing if the plugin is not loaded immediately. In
+Niri, the practical reload is to terminate and relaunch `noctalia-shell`.
 
 The widget refreshes every 60 minutes by default. Click the pill to refresh immediately. Right-click for refresh/open/settings actions.
 
@@ -107,11 +90,7 @@ The hover tooltip is deliberately compact and only shows the current channel, ga
 
 ## Uninstall
 
-```bash
-./uninstall.sh
-```
-
-This removes the live plugin copy, removes the enabled plugin state, removes the bar widget entry, and backs up the touched Noctalia JSON files.
+Remove the plugin through Noctalia's plugin manager.
 
 ## Settings
 
