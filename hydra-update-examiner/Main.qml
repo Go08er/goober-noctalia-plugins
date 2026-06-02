@@ -8,7 +8,7 @@ Item {
 
   property var pluginApi: null
 
-  readonly property string scriptPath: decodeURIComponent(Qt.resolvedUrl("scripts/hydra-channel-progress").toString().replace("file://", ""))
+  readonly property string scriptPath: localFilePath(Qt.resolvedUrl("scripts/hydra-channel-progress"))
   readonly property var cfg: pluginApi?.pluginSettings || ({})
   readonly property var defaults: pluginApi?.manifest?.metadata?.defaultSettings || ({})
   readonly property int refreshIntervalMinutes: Math.max(1, cfg.refreshIntervalMinutes ?? defaults.refreshIntervalMinutes ?? 60)
@@ -33,6 +33,8 @@ Item {
   property string statusUrl: "https://hydra.nixos.org/jobset/nixos/unstable/evals"
   property bool loading: false
   property string lastUpdated: ""
+  property double lastRequestStartedAt: 0
+  readonly property int minimumRefreshIntervalMs: 30000
 
   IpcHandler {
     target: "plugin:hydra-update-examiner"
@@ -44,6 +46,10 @@ Item {
     function open() {
       root.openHydra()
     }
+  }
+
+  function localFilePath(url) {
+    return decodeURIComponent(url.toString().replace(/^file:\/\//, ""))
   }
 
   Timer {
@@ -83,7 +89,7 @@ Item {
         root.statusUrl = parsed.url !== undefined ? parsed.url : root.statusUrl
         root.lastUpdated = new Date().toLocaleTimeString()
       } catch (e) {
-        Logger.w("HydraUnstableProgress", "Failed to parse status JSON: " + e)
+        Logger.w("HydraChannelProgress", "Failed to parse status JSON: " + e)
         root.statusText = "ERR"
         root.statusIcon = "server-off"
         const raw = String(stdout.text).trim()
@@ -98,7 +104,13 @@ Item {
   function refresh() {
     if (statusProc.running)
       return
+    const now = Date.now()
+    if (root.lastRequestStartedAt > 0 && now - root.lastRequestStartedAt < root.minimumRefreshIntervalMs) {
+      Logger.w("HydraChannelProgress", "Ignoring refresh request inside cooldown window.")
+      return
+    }
     root.loading = true
+    root.lastRequestStartedAt = now
     statusProc.command = [
       root.scriptPath,
       "--channel", root.selectedChannel,

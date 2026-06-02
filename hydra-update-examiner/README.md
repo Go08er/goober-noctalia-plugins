@@ -1,41 +1,66 @@
 # Hydra Update Examiner
 
-Noctalia bar widget for estimating how close a NixOS or Nixpkgs channel is to advancing.
+Noctalia bar widget for estimating how close a NixOS or Nixpkgs channel is to
+publishing its next update.
 
 ![Hydra Update Examiner preview](preview.png)
 
-The widget queries Hydra on demand, without a daemon, and displays a channel-readiness score. It does not treat all Hydra jobs as equal: when a channel gate exists, it weights that gate and its constituent blockers more heavily than the candidate eval queue.
+## What It Does
 
-Hydra Update Examiner uses Hydra's JSON API for evaluation metadata, channel-gate
-build status, and gate constituent counts. Candidate-wide progress still reads
+Hydra Update Examiner checks public NixOS Hydra and channel endpoints on demand.
+It displays a readiness score in the Noctalia bar and switches to `Launched`
+when the latest visible evaluation revision matches the public channel revision.
+
+The score combines:
+
+- Candidate evaluation progress.
+- Channel-gate status, such as `tested` or `unstable`.
+- Failed and pending gate constituent builds.
+- Published channel revision from `channels.nixos.org`.
+
+This is a heuristic. Hydra does not publish a single authoritative “channel will
+advance in N minutes” value.
+
+## Data Sources
+
+The plugin uses Hydra's JSON API for evaluation metadata, channel-gate build
+status, and gate constituent counts. Candidate-wide progress still reads
 Hydra's evaluation summary page because the JSON evaluation payload exposes the
-full build-id list, not the grouped queued/succeeded/failed summary. This keeps
-the widget fast while avoiding the most fragile page scraping.
+full build-id list, not Hydra's grouped queued/succeeded/failed summary.
 
-## What It Shows
+Normal exact-channel refreshes currently use several public `GET` requests:
 
-- Candidate Hydra eval queue progress.
-- Health-adjusted all-job score.
-- Exact channel-gate status for the latest eval.
-- Constituent failed/pending blocker counts from the channel-gate build page when available.
-- Current public channel revision from `channels.nixos.org`.
+- `channels.nixos.org/<channel>/git-revision`
+- `hydra.nixos.org/jobset/<project>/<jobset>/evals`
+- `hydra.nixos.org/eval/<eval-id>`
+- `hydra.nixos.org/eval/<eval-id>/job/<gate>`
+- `hydra.nixos.org/build/<build-id>/constituents`
 
-`100%` means Hydra appears done with the candidate and the channel should publish soon. Once the newest visible eval is already the public channel revision, the widget changes from a percentage to `Launched`. The tooltip distinguishes:
+Stable aliases also query the public Nix channel listing from
+`nix-channels.s3.amazonaws.com`.
 
-- `imminent: channel gate passed; waiting for channel publication`
-- `launched: latest visible eval is published; update now`
+The widget has a short client-side refresh cooldown so repeated clicks do not
+hammer public infrastructure.
 
-If the channel gate has passed but the candidate eval still has queued jobs, the widget stays below `100%` and reports `close: channel gate passed; candidate eval queue still draining`.
+## Install
 
-The queued job count is not Hydra's global queue. It is the queue for the candidate evaluation currently being examined. Hydra can keep building unrelated global jobs forever; the candidate eval queue must drain before that candidate can publish.
+Install through Noctalia's plugin manager after adding this custom source:
 
-When the channel gate fails or dependency-fails, the visible score is capped and weighted by the blocker count instead of global queue completion.
+```json
+{
+  "enabled": true,
+  "name": "Goober Noctalia Plugins",
+  "url": "https://github.com/Go08er/goober-noctalia-plugins"
+}
+```
 
-## Dependencies
+Restart Noctalia Shell if the widget is not loaded immediately.
+
+## Runtime Requirements
 
 Requires Noctalia `4.6.6` or newer.
 
-Runtime commands:
+Required commands:
 
 - `bash`
 - `curl`
@@ -47,10 +72,8 @@ Runtime commands:
 - `timeout`
 - `xdg-open`
 
-On NixOS, `bash`, `perl`, `grep`, `awk`, `sed`, and `timeout` are normally present. Add `curl`, `jq`, and `xdg-utils` if needed.
-The installer also expects standard GNU userland tools such as `cp`, `mv`, `rm`, `realpath`, and `mktemp`.
-
-Example:
+On NixOS, most of these are usually already available. Add the missing user
+tools if needed:
 
 ```nix
 environment.systemPackages = with pkgs; [
@@ -60,60 +83,21 @@ environment.systemPackages = with pkgs; [
 ];
 ```
 
-## Network And Privacy
+To test the helper script in a temporary Nix shell:
 
-The widget is a status monitor for public infrastructure. It does not use credentials, does not send POST requests, and does not run a background daemon.
-
-It performs read-only `GET` requests to:
-
-- `https://hydra.nixos.org`
-- `https://channels.nixos.org`
-- `https://nix-channels.s3.amazonaws.com`
-
-Requests happen when Noctalia loads the widget, on the configured refresh interval, and when the widget is manually refreshed. The default refresh interval is 60 minutes.
-
-The plugin itself only persists settings through Noctalia.
-
-## Install
-
-Install this plugin through Noctalia's plugin manager after adding the custom
-source repository:
-
-```json
-{
-  "enabled": true,
-  "name": "Goober Noctalia Plugins",
-  "url": "https://github.com/Go08er/goober-noctalia-plugins"
-}
+```bash
+nix shell nixpkgs#curl nixpkgs#jq nixpkgs#perl nixpkgs#gnugrep nixpkgs#gawk nixpkgs#gnused nixpkgs#coreutils
+./scripts/hydra-channel-progress --channel nixos-unstable
 ```
-
-Restart Noctalia after installing if the plugin is not loaded immediately. In
-Niri, the practical reload is to terminate and relaunch `noctalia-shell`.
-
-The widget refreshes every 60 minutes by default. Click the pill to refresh immediately. Right-click for refresh/open/settings actions.
-
-The hover tooltip is deliberately compact and only shows the current channel, gate, candidate progress, blockers, and revisions. The longer scoring explanation lives in this README and is available from the plugin settings documentation button.
-
-## Uninstall
-
-Remove the plugin through Noctalia's plugin manager.
 
 ## Settings
 
 - Channel preset: `nixos-unstable`, `nixos-unstable-small`, current stable NixOS, current stable small, `nixpkgs-unstable`, or an exact supported channel.
 - Refresh interval in minutes.
-- Noctalia color keys for running, stalled, and close states.
+- Noctalia color keys for running, stalled, close, and launched states.
 - Icon names for running, stalled, close, and launched states.
 - Close threshold, defaulting to 90%.
 - Percent text display: follow Noctalia hover behavior, always show percent, or icon only.
-
-The script validates the final channel through:
-
-```text
-https://channels.nixos.org/<channel>/git-revision
-```
-
-Unsupported or misspelled channels return a visible error state instead of silently scraping the wrong Hydra jobset.
 
 Supported exact channel names:
 
@@ -129,38 +113,44 @@ Supported exact channel names:
 
 The exact-channel field is not a generic third-party Hydra URL. It accepts only
 public NixOS/Nixpkgs channels whose Hydra project, jobset, and publication gate
-are mapped by the script. Other public channel families, such as historical
-archives or Darwin-only `nixpkgs-YY.MM-darwin` channels, are intentionally
-rejected until their Hydra publication gate is mapped explicitly.
+are mapped by the script.
 
-## NixOS/Home-Managed Install Pattern
+## Troubleshooting
 
-If you prefer managing the plugin declaratively, copy this directory into your config and link it into:
+`ERR` usually means a required command is missing, a channel is unsupported, or
+Hydra/channel infrastructure was unreachable.
 
-```text
-~/.config/noctalia/plugins/hydra-update-examiner
-```
+`HYD` means the script reached Hydra but could not identify or parse the current
+evaluation.
 
-Example Home Manager pattern:
+If the widget does not load:
 
-```nix
-home.file.".config/noctalia/plugins/hydra-update-examiner" = {
-  source = ./path/to/hydra-update-examiner;
-  recursive = true;
-};
-```
+1. Confirm the plugin is installed and enabled in Noctalia.
+2. Restart Noctalia Shell.
+3. Run the helper script directly:
+
+   ```bash
+   ~/.config/noctalia/plugins/hydra-update-examiner/scripts/hydra-channel-progress --channel nixos-unstable
+   ```
+
+Frequent manual refreshes, short refresh intervals, network proxies, TLS
+inspection, captive portals, or Hydra gateway timeouts can all produce temporary
+error states. The plugin does not use credentials and only performs read-only
+public requests, but public services still see normal client metadata such as IP
+address and user agent.
 
 ## Notes
 
-Hydra does not expose a single official “unstable will advance in N minutes” value. This widget is a heuristic built from public Hydra and channel endpoints. It is intended to be useful and honest, not authoritative.
+The estimate follows the newest visible candidate evaluation for the selected
+channel. It does not search backward for an older publishable evaluation if a
+newer evaluation is still queued or blocked.
 
-The estimate follows the newest candidate eval for the selected channel. If Hydra has a newer failed or still-queued eval while an older eval is publishable, the widget reports the newer candidate rather than searching backward for the newest publishable historical eval.
-
-Stable aliases are resolved from the public Nix channel listing, with a date-based fallback if the listing is unavailable. Exact release channels are recommended when you need deterministic behavior.
+`100%` means the candidate appears ready or publication is imminent. `Launched`
+means the latest visible evaluation revision is already the public channel
+revision and users can update.
 
 ## AI Assistance
 
-This plugin was developed with AI assistance from OpenAI Codex. The code and
-packaging should still be reviewed as ordinary community-maintained software;
-the Hydra readiness score is a heuristic, not an upstream NixOS service-level
-indicator.
+This plugin was developed with AI assistance from OpenAI Codex. The maintainer
+reviewed the implementation and accepts responsibility for the published code
+and packaging.

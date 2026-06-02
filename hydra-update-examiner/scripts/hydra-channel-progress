@@ -17,6 +17,9 @@ jobset="unstable"
 gate_job="tested"
 gate_label="tested"
 channel_rev_url=""
+channel_rev=""
+channel_short_rev=""
+channel_revision_status="unknown"
 evals_url=""
 eval_id=""
 eval_url=""
@@ -48,10 +51,6 @@ Supported channels:
 EOF
 }
 
-json_escape() {
-  jq -Rs .
-}
-
 emit_without_jq() {
   printf '{"text":"ERR","icon":"server-off","tooltip":"Missing required command: jq","iconColor":"error","textColor":"error","url":"","channel":"%s"}\n' "${channel//\"/}"
   exit 0
@@ -65,7 +64,7 @@ fail_json() {
 }
 
 require_arg() {
-  if [[ $# -lt 2 || "${2:-}" == --* ]]; then
+  if [[ -z "${2:-}" || "$2" == --* ]]; then
     fail_json "Missing value for $1"
   fi
 }
@@ -94,14 +93,15 @@ emit() {
   local url="${6:-$evals_url}"
   local emitted_channel="${7:-$channel}"
 
-  printf '{"text":%s,"icon":%s,"tooltip":%s,"iconColor":%s,"textColor":%s,"url":%s,"channel":%s}\n' \
-    "$(printf '%s' "$text" | json_escape)" \
-    "$(printf '%s' "$icon" | json_escape)" \
-    "$(printf '%s' "$tooltip" | json_escape)" \
-    "$(printf '%s' "$icon_color" | json_escape)" \
-    "$(printf '%s' "$text_color" | json_escape)" \
-    "$(printf '%s' "$url" | json_escape)" \
-    "$(printf '%s' "$emitted_channel" | json_escape)"
+  jq -cn \
+    --arg text "$text" \
+    --arg icon "$icon" \
+    --arg tooltip "$tooltip" \
+    --arg iconColor "$icon_color" \
+    --arg textColor "$text_color" \
+    --arg url "$url" \
+    --arg channel "$emitted_channel" \
+    '{text: $text, icon: $icon, tooltip: $tooltip, iconColor: $iconColor, textColor: $textColor, url: $url, channel: $channel}'
 }
 
 get_count() {
@@ -133,24 +133,28 @@ build_status_label() {
     2) printf 'Dependency failed' ;;
     3) printf 'Aborted' ;;
     4) printf 'Cancelled' ;;
-    6) printf 'Timed out' ;;
-    *) printf 'Unknown' ;;
+    6) printf 'Failed with output' ;;
+    7) printf 'Timed out' ;;
+    9) printf 'Aborted' ;;
+    10) printf 'Log size limit exceeded' ;;
+    11) printf 'Output size limit exceeded' ;;
+    *) printf 'Failed' ;;
   esac
 }
 
 channel_exists() {
   local candidate="$1"
-  local http_code
+  local fetched_rev
   transport_error=""
-  http_code="$(timeout 8s curl -L -sS -o /dev/null -w '%{http_code}' "https://channels.nixos.org/$candidate/git-revision" 2>/dev/null || true)"
-  case "$http_code" in
-    200) return 0 ;;
-    404) return 1 ;;
-    *)
-      transport_error="Could not reach channels.nixos.org while validating $candidate."
-      return 2
-      ;;
-  esac
+  fetched_rev="$(timeout 8s curl -fsSL "https://channels.nixos.org/$candidate/git-revision" 2>/dev/null || true)"
+  if [[ "$fetched_rev" =~ ^[0-9a-f]{40}$ ]]; then
+    channel_rev="$fetched_rev"
+    channel_short_rev="${channel_rev:0:12}"
+    channel_revision_status="known"
+    return 0
+  fi
+  transport_error="Could not fetch a valid git revision from channels.nixos.org for $candidate."
+  return 1
 }
 
 fetch_channel_listing() {
@@ -248,13 +252,7 @@ resolve_channel() {
       gate_job="tested"
       gate_label="tested"
       ;;
-    nixos-[0-9][0-9].[0-9][0-9])
-      project="nixos"
-      jobset="release-${channel#nixos-}"
-      gate_job="tested"
-      gate_label="tested"
-      ;;
-    nixos-[0-9][0-9].[0-9][0-9]-small)
+    nixos-[0-9][0-9].[0-9][0-9]|nixos-[0-9][0-9].[0-9][0-9]-small)
       project="nixos"
       jobset="release-${channel#nixos-}"
       gate_job="tested"
@@ -284,52 +282,52 @@ resolve_channel() {
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --channel)
-      require_arg "$@"
+      require_arg "$1" "${2:-}"
       channel="${2:-}"
       shift 2
       ;;
     --running-color)
-      require_arg "$@"
+      require_arg "$1" "${2:-}"
       running_color="${2:-$running_color}"
       shift 2
       ;;
     --stalled-color)
-      require_arg "$@"
+      require_arg "$1" "${2:-}"
       stalled_color="${2:-$stalled_color}"
       shift 2
       ;;
     --close-color)
-      require_arg "$@"
+      require_arg "$1" "${2:-}"
       close_color="${2:-$close_color}"
       shift 2
       ;;
     --launched-color)
-      require_arg "$@"
+      require_arg "$1" "${2:-}"
       launched_color="${2:-$launched_color}"
       shift 2
       ;;
     --running-icon)
-      require_arg "$@"
+      require_arg "$1" "${2:-}"
       running_icon="${2:-$running_icon}"
       shift 2
       ;;
     --stalled-icon)
-      require_arg "$@"
+      require_arg "$1" "${2:-}"
       stalled_icon="${2:-$stalled_icon}"
       shift 2
       ;;
     --close-icon)
-      require_arg "$@"
+      require_arg "$1" "${2:-}"
       close_icon="${2:-$close_icon}"
       shift 2
       ;;
     --launched-icon)
-      require_arg "$@"
+      require_arg "$1" "${2:-}"
       launched_icon="${2:-$launched_icon}"
       shift 2
       ;;
     --close-threshold)
-      require_arg "$@"
+      require_arg "$1" "${2:-}"
       close_threshold="${2:-$close_threshold}"
       shift 2
       ;;
@@ -438,8 +436,6 @@ health_score="$(
 
 tested_status="not used"
 tested_build_id=""
-tested_build_html=""
-channel_revision_status="known"
 gate_total=""
 gate_failed=""
 gate_pending=""
@@ -495,8 +491,6 @@ if [[ -n "$tested_build_id" ]]; then
   fi
 fi
 
-channel_rev="$(timeout 10s curl -fsSL "$channel_rev_url" 2>/dev/null || true)"
-channel_short_rev="${channel_rev:0:12}"
 if [[ -z "$channel_rev" ]]; then
   channel_revision_status="unavailable"
   channel_short_rev="unknown"

@@ -1,17 +1,18 @@
 # Goober Noctalia Plugins
 
-Custom plugin source for [Noctalia](https://github.com/noctalia-dev/noctalia-shell).
+Custom plugin source for [Noctalia Shell](https://github.com/noctalia-dev/noctalia-shell).
 
-This repository is structured for Noctalia's plugin manager: `registry.json` lives
-at the repository root, and each plugin is stored in a directory named after its
-plugin id.
+This repository is structured for Noctalia's plugin manager. `registry.json`
+lives at the repository root, and each plugin is stored in a directory named
+after its plugin id.
 
-## Plugins
+## Available Plugins
 
-- `hydra-update-examiner`: bar widget that estimates NixOS/Nixpkgs channel
-  readiness from Hydra eval and channel gate status.
+| Plugin | Description |
+| --- | --- |
+| `hydra-update-examiner` | Bar widget that estimates NixOS/Nixpkgs channel readiness from Hydra evaluation and channel-gate status. |
 
-## Add This Source
+## Install Source
 
 Add this repository as a custom plugin source in Noctalia:
 
@@ -23,16 +24,10 @@ Add this repository as a custom plugin source in Noctalia:
 }
 ```
 
-After adding the source, install `Hydra Update Examiner` through Noctalia's
-plugin interface.
+Then install `Hydra Update Examiner` through Noctalia's plugin interface.
 
-## Repository Contents
-
-- `registry.json`: source index consumed by Noctalia.
-- `hydra-update-examiner/`: installable plugin package.
-- `hydra-update-examiner/manifest.json`: plugin metadata.
-- `hydra-update-examiner/preview.png`: store preview image.
-- `hydra-update-examiner/README.md`: plugin documentation.
+If the plugin does not appear immediately, refresh the plugin source list or
+restart Noctalia Shell.
 
 ## Repository Layout
 
@@ -52,14 +47,34 @@ hydra-update-examiner/
     hydra-channel-progress
 ```
 
-## Updating The Registry
+## Maintenance
 
-When a plugin changes, update the plugin directory, bump the plugin version in
-both `manifest.json` and `registry.json`, then push the repository. Noctalia
-users receive the updated package from this source.
+When a plugin changes:
+
+1. Update the plugin package directory.
+2. Bump the version in both `hydra-update-examiner/manifest.json` and `registry.json`.
+3. Validate JSON and script syntax.
+4. Push to `main`.
+5. Create a matching GitHub release tag, such as `v1.3.0`.
+
+Version tags are used as release notes for users and as a clear update boundary
+for the custom source.
+
+## Support
+
+This is a community-maintained plugin source. File issues on this repository
+with:
+
+- Noctalia version.
+- Plugin version.
+- Channel being monitored.
+- Screenshot or copied tooltip text.
+- Output from `hydra-update-examiner/scripts/hydra-channel-progress --channel <channel>` when relevant.
+
+Pull requests are welcome when they keep the plugin source layout compatible
+with Noctalia's plugin manager.
 
 ## License
 
-This repository is MIT licensed. Plugins may also include a plugin-local
-license file when useful for plugin-manager packaging; `Hydra Update Examiner`
-is MIT licensed.
+This repository is MIT licensed. Unless a plugin says otherwise, plugin QML,
+scripts, documentation, and preview assets in this repository are MIT licensed.
