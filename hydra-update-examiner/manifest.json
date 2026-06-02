@@ -1,7 +1,7 @@
 {
   "id": "hydra-update-examiner",
   "name": "Hydra Update Examiner",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "minNoctaliaVersion": "4.6.6",
   "author": "goober + Codex",
   "license": "MIT",

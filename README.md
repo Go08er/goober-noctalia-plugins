@@ -49,7 +49,7 @@ hydra-update-examiner/
   i18n/
     en.json
   scripts/
-    hydra-unstable-progress
+    hydra-channel-progress
 ```
 
 ## Updating The Registry

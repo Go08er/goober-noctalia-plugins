@@ -27,7 +27,7 @@ transport_error=""
 
 usage() {
   cat <<'EOF'
-Usage: hydra-unstable-progress [options]
+Usage: hydra-channel-progress [options]
 
 Options:
   --channel CHANNEL          Channel to inspect. Default: nixos-unstable.

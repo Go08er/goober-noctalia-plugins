@@ -8,7 +8,7 @@ Item {
 
   property var pluginApi: null
 
-  readonly property string scriptPath: decodeURIComponent(Qt.resolvedUrl("scripts/hydra-unstable-progress").toString().replace("file://", ""))
+  readonly property string scriptPath: decodeURIComponent(Qt.resolvedUrl("scripts/hydra-channel-progress").toString().replace("file://", ""))
   readonly property var cfg: pluginApi?.pluginSettings || ({})
   readonly property var defaults: pluginApi?.manifest?.metadata?.defaultSettings || ({})
   readonly property int refreshIntervalMinutes: Math.max(1, cfg.refreshIntervalMinutes ?? defaults.refreshIntervalMinutes ?? 60)
