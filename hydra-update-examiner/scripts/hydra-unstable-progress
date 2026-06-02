@@ -22,6 +22,7 @@ eval_id=""
 eval_url=""
 eval_short_rev=""
 eval_html=""
+eval_json=""
 transport_error=""
 
 usage() {
@@ -110,6 +111,31 @@ get_count() {
     grep -Eo "$label \\([0-9]+\\)" |
     head -n1 |
     tr -cd '0-9'
+}
+
+build_status_label() {
+  local finished="$1"
+  local status="$2"
+  local starttime="${3:-0}"
+
+  if [[ "$finished" != "1" ]]; then
+    if [[ "$starttime" =~ ^[0-9]+$ && "$starttime" -gt 0 ]]; then
+      printf 'Running'
+    else
+      printf 'Queued'
+    fi
+    return
+  fi
+
+  case "$status" in
+    0) printf 'Succeeded' ;;
+    1) printf 'Failed' ;;
+    2) printf 'Dependency failed' ;;
+    3) printf 'Aborted' ;;
+    4) printf 'Cancelled' ;;
+    6) printf 'Timed out' ;;
+    *) printf 'Unknown' ;;
+  esac
 }
 
 channel_exists() {
@@ -317,11 +343,11 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-running_color="$(safe_color "$running_color" "tertiary")"
+running_color="$(safe_color "$running_color" "secondary")"
 stalled_color="$(safe_color "$stalled_color" "error")"
-close_color="$(safe_color "$close_color" "primary")"
+close_color="$(safe_color "$close_color" "tertiary")"
 launched_color="$(safe_color "$launched_color" "primary")"
-running_icon="$(safe_icon "$running_icon" "server")"
+running_icon="$(safe_icon "$running_icon" "server-bolt")"
 stalled_icon="$(safe_icon "$stalled_icon" "server-off")"
 close_icon="$(safe_icon "$close_icon" "server-spark")"
 launched_icon="$(safe_icon "$launched_icon" "rocket")"
@@ -349,11 +375,19 @@ fi
 
 eval_url="$base_url/eval/$eval_id"
 
+eval_json="$(timeout 20s curl -fsSL -H 'Accept: application/json' "$eval_url" 2>/dev/null || true)"
+eval_full_rev="$(printf '%s\n' "$eval_json" | jq -r '.jobsetevalinputs.nixpkgs.revision // empty' 2>/dev/null || true)"
+if [[ -n "$eval_full_rev" && "$eval_full_rev" != "null" ]]; then
+  eval_short_rev="${eval_full_rev:0:12}"
+fi
+
 eval_html="$(timeout 20s curl -fsSL "$eval_url" 2>/dev/null || true)"
-eval_short_rev="$(
-  printf '%s\n' "$eval_html" |
-    perl -0777 -ne 'if (m{(?:nixos|nixpkgs)-[^<\s]*?\.([0-9a-f]{12})}s) { print $1 }'
-)"
+if [[ -z "$eval_short_rev" ]]; then
+  eval_short_rev="$(
+    printf '%s\n' "$eval_html" |
+      perl -0777 -ne 'if (m{(?:nixos|nixpkgs)-[^<\s]*?\.([0-9a-f]{12})}s) { print $1 }'
+  )"
+fi
 
 summary="$(
   printf '%s\n' "$eval_html" |
@@ -412,19 +446,17 @@ gate_pending=""
 gate_score=""
 
 if [[ -n "$gate_job" ]]; then
-  tested_build_html="$(timeout 20s curl -fsSL "$eval_url/job/$gate_job" 2>/dev/null || true)"
-  tested_status="$(
-    printf '%s\n' "$tested_build_html" |
-      perl -0777 -ne 'if (m{id="tabs-summary".*?<img[^>]+title="([^"]+)"}s) { print $1 }'
-  )"
-  tested_build_id="$(
-    printf '%s\n' "$tested_build_html" |
-      perl -0777 -ne 'if (m{Build\s+([0-9]+)\s+of job}s) { print $1 } elsif (m{<th>Build ID:</th>\s*<td>([0-9]+)</td>}s) { print $1 }'
-  )"
-  gate_rev="$(
-    printf '%s\n' "$tested_build_html" |
-      perl -0777 -ne 'if (m{<th>Nix name:</th>\s*<td><tt>[^<]*?\.([0-9a-f]{12})</tt></td>}s) { print $1 }'
-  )"
+  tested_build_json="$(timeout 20s curl -fsSL -H 'Accept: application/json' "$eval_url/job/$gate_job" 2>/dev/null || true)"
+  tested_build_id="$(printf '%s\n' "$tested_build_json" | jq -r '.id // empty' 2>/dev/null || true)"
+  tested_finished="$(printf '%s\n' "$tested_build_json" | jq -r '.finished // 0' 2>/dev/null || true)"
+  tested_buildstatus="$(printf '%s\n' "$tested_build_json" | jq -r '.buildstatus // empty' 2>/dev/null || true)"
+  tested_starttime="$(printf '%s\n' "$tested_build_json" | jq -r '.starttime // 0' 2>/dev/null || true)"
+  tested_status="$(build_status_label "$tested_finished" "$tested_buildstatus" "$tested_starttime")"
+  gate_nixname="$(printf '%s\n' "$tested_build_json" | jq -r '.nixname // empty' 2>/dev/null || true)"
+  gate_rev=""
+  if [[ "$gate_nixname" =~ \.([0-9a-f]{12}) ]]; then
+    gate_rev="${BASH_REMATCH[1]}"
+  fi
   if [[ -n "$gate_rev" ]]; then
     eval_short_rev="$gate_rev"
   fi
@@ -432,14 +464,16 @@ if [[ -n "$gate_job" ]]; then
   tested_build_id="${tested_build_id:-}"
 fi
 
-if [[ -n "$tested_build_id" && -n "$tested_build_html" ]]; then
+if [[ -n "$tested_build_id" ]]; then
   gate_counts="$(
-    printf '%s\n' "$tested_build_html" |
-      perl -0777 -ne '
-        if (m{([0-9]+)\s+out of\s+([0-9]+)\s+constituent builds failed(?:.*?\(([0-9]+)\s+still pending\))?}s) {
-          print "$1\t$2\t" . ($3 // 0);
-        }
-      '
+    timeout 20s curl -fsSL -H 'Accept: application/json' "$base_url/build/$tested_build_id/constituents" 2>/dev/null |
+      jq -r '
+        [
+          (map(select((.finished // 0) == 1 and (.buildstatus // 0) != 0)) | length),
+          length,
+          (map(select((.finished // 0) != 1)) | length)
+        ] | @tsv
+      ' 2>/dev/null || true
   )"
   IFS=$'\t' read -r gate_failed gate_total gate_pending <<< "$gate_counts"
   gate_failed="${gate_failed:-0}"

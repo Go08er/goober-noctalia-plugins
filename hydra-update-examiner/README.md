@@ -6,6 +6,12 @@ Noctalia bar widget for estimating how close a NixOS or Nixpkgs channel is to ad
 
 The widget queries Hydra on demand, without a daemon, and displays a channel-readiness score. It does not treat all Hydra jobs as equal: when a channel gate exists, it weights that gate and its constituent blockers more heavily than the candidate eval queue.
 
+Hydra Update Examiner uses Hydra's JSON API for evaluation metadata, channel-gate
+build status, and gate constituent counts. Candidate-wide progress still reads
+Hydra's evaluation summary page because the JSON evaluation payload exposes the
+full build-id list, not the grouped queued/succeeded/failed summary. This keeps
+the widget fast while avoiding the most fragile page scraping.
+
 ## What It Shows
 
 - Candidate Hydra eval queue progress.
@@ -151,3 +157,10 @@ Hydra does not expose a single official “unstable will advance in N minutes”
 The estimate follows the newest candidate eval for the selected channel. If Hydra has a newer failed or still-queued eval while an older eval is publishable, the widget reports the newer candidate rather than searching backward for the newest publishable historical eval.
 
 Stable aliases are resolved from the public Nix channel listing, with a date-based fallback if the listing is unavailable. Exact release channels are recommended when you need deterministic behavior.
+
+## AI Assistance
+
+This plugin was developed with AI assistance from OpenAI Codex. The code and
+packaging should still be reviewed as ordinary community-maintained software;
+the Hydra readiness score is a heuristic, not an upstream NixOS service-level
+indicator.
