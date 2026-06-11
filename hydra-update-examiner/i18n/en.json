@@ -64,7 +64,7 @@
       "label": "Hydra source"
     },
     "stalled": {
-      "description": "Used when the channel gate is failed, dependency-failed, aborted, or timed out."
+      "description": "Used when the channel gate failed or blocker constituents have failed."
     },
     "states": {
       "close": "Close",

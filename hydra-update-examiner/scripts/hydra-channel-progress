@@ -142,6 +142,17 @@ build_status_label() {
   esac
 }
 
+status_is_blocked() {
+  case "$1" in
+    Failed|Dependency\ failed|Aborted|Cancelled|Failed\ with\ output|Timed\ out|Log\ size\ limit\ exceeded|Output\ size\ limit\ exceeded)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
 channel_exists() {
   local candidate="$1"
   local fetched_rev
@@ -500,7 +511,22 @@ readiness="$(awk -v s="$health_score" 'BEGIN { if (s > 98) s = 98; printf "%.0f%
 readiness_detail="waiting for eval completion"
 launched=0
 
-if [[ -n "$eval_short_rev" && -n "$channel_rev" && "$channel_rev" == "$eval_short_rev"* ]]; then
+if [[ "${gate_failed:-0}" =~ ^[0-9]+$ && "${gate_failed:-0}" -gt 0 ]]; then
+  if [[ -n "$gate_score" ]]; then
+    readiness="$(awk -v s="$gate_score" 'BEGIN { if (s > 85) s = 85; printf "%.0f%%", s }')"
+  else
+    readiness="$(awk -v s="$health_score" 'BEGIN { if (s > 85) s = 85; printf "%.0f%%", s }')"
+  fi
+  readiness_detail="blocked: $gate_label gate has $gate_failed failed blocker constituents"
+elif status_is_blocked "$tested_status"; then
+  if [[ -n "$gate_score" ]]; then
+    readiness="$(awk -v s="$gate_score" 'BEGIN { if (s > 85) s = 85; printf "%.0f%%", s }')"
+    readiness_detail="blocked: $gate_label gate is $tested_status; blocker failures present"
+  else
+    readiness="$(awk -v s="$health_score" 'BEGIN { if (s > 85) s = 85; printf "%.0f%%", s }')"
+    readiness_detail="blocked: $gate_label gate is $tested_status"
+  fi
+elif [[ -n "$eval_short_rev" && -n "$channel_rev" && "$channel_rev" == "$eval_short_rev"* ]]; then
   readiness="Launched"
   readiness_detail="launched: latest visible eval is published; update now"
   launched=1
@@ -521,14 +547,6 @@ elif [[ "$tested_status" == "Succeeded" ]]; then
         }'
     )"
     readiness_detail="close: channel gate passed; candidate eval queue still draining"
-  fi
-elif [[ "$tested_status" == "Failed" || "$tested_status" == "Dependency failed" || "$tested_status" == "Aborted" || "$tested_status" == "Timed out" ]]; then
-  if [[ -n "$gate_score" ]]; then
-    readiness="$(awk -v s="$gate_score" 'BEGIN { if (s > 85) s = 85; printf "%.0f%%", s }')"
-    readiness_detail="blocked: $gate_label gate is $tested_status; blocker failures present"
-  else
-    readiness="$(awk -v s="$health_score" 'BEGIN { if (s > 85) s = 85; printf "%.0f%%", s }')"
-    readiness_detail="blocked: $gate_label gate is $tested_status"
   fi
 elif [[ -n "$gate_score" ]]; then
   readiness="$(awk -v g="$gate_score" -v e="$eval_progress_score" 'BEGIN { s = (g * 0.70) + (e * 0.30); if (s > 98) s = 98; printf "%.0f%%", s }')"
